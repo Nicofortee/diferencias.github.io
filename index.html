@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ENCUENTRA LAS DIFERENCIAS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #b218b8;
+            --secondary: #FF4757;
+            --success: #3cdc14;
+            --bg: #2F3542;
+        }
+
+        body {
+            font-family: 'Fredoka One', cursive;
+            background-color: var(--bg);
+            color: white;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+
+        .hud {
+            width: 100%;
+            padding: 10px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            background: rgba(0,0,0,0.3);
+            flex-shrink: 0;
+        }
+
+        #game-board {
+            width: 95vw;
+            max-width: 500px;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        /* Contenedor que se ajusta al tamaño real de la imagen */
+        .img-wrapper {
+            position: relative;
+            display: inline-block;
+            margin: 0 auto;
+            cursor: crosshair;
+        }
+
+        img { 
+            display: block;
+            width: auto;
+            max-width: 100%;
+            max-height: 40vh; /* Ajuste para que quepan ambas */
+            border: 3px solid white;
+            border-radius: 12px;
+            pointer-events: auto;
+        }
+
+        .marker {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+
+        .marker.correct {
+            width: 35px; height: 35px;
+            border: 4px solid var(--success);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--success);
+        }
+
+        .marker.wrong {
+            font-size: 35px;
+            color: var(--secondary);
+            text-shadow: 0 0 5px rgba(0,0,0,0.8);
+        }
+
+        .overlay {
+            position: fixed; top:0; left:0; width: 100%; height: 100%;
+            background: rgba(47, 53, 66, 0.98);
+            display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            z-index: 100; text-align: center; padding: 20px;
+        }
+
+        .hidden { display: none !important; }
+
+        button {
+            background: var(--primary);
+            border: none; padding: 15px 35px;
+            font-family: 'Fredoka One', cursive;
+            font-size: 1.3rem; border-radius: 50px; cursor: pointer;
+            box-shadow: 0 5px 0 #d66d09;
+        }
+    </style>
+</head>
+<body>
+
+<div class="hud">
+    <div class="hearts" id="lives-display">❤️❤️❤️</div>
+    <div class="stat">NIVEL: <span id="lvl-txt">1</span>/5</div>
+    <div class="stat" id="timer-display">🕒 0s</div>
+</div>
+
+<div id="game-board">
+    <div class="img-wrapper" id="wrapper1" onclick="handleTap(event)">
+        <img id="img1" src="">
+    </div>
+    <div class="img-wrapper" id="wrapper2" onclick="handleTap(event)">
+        <img id="img2" src="">
+    </div>
+</div>
+
+<div id="start-screen" class="overlay">
+    <h1 style="color: var(--primary);">¡BUSCÁ Y GANÁ!</h1>
+    <p>Encuentra las 4 diferencias en cada nivel.<br>¡Si fallas pierdes una vida y sumas 10s!</p>
+    <button onclick="initGame()">¡𝗝𝗨𝗚𝗔𝗥!</button>
+</div>
+
+<div id="win-screen" class="overlay hidden">
+    <h1 style="color: var(--success);">¡LOGRADO!</h1>
+    <p id="result-text"></p>
+    <button onclick="location.reload()">REINTENTAR</button>
+</div>
+
+<div id="over-screen" class="overlay hidden">
+    <h1 style="color: var(--secondary);">𝗣𝗘𝗥𝗗𝗜𝗦𝗧𝗘</h1>
+    <button onclick="location.reload()">𝙍𝙀𝙄𝙉𝙏𝙀𝙉𝙏𝘼𝙍</button>
+</div>
+
+<script>
+    const levels = [
+        { id: 1, diffs: [{x: 34.5, y: 49.5}, {x: 42.8, y: 29.2}, {x: 79.2, y: 34.5}, {x: 5.5, y: 58.2}], imgA: 'img4.jpeg', imgB: 'img4 copia.jpg' },
+        { id: 3, diffs: [{x: 13.5, y: 34.2}, {x: 33.5, y: 73.0}, {x: 67.5, y: 84.5}, {x: 89.0, y: 48.5}], imgA: 'img2.jpg', imgB: 'img2 copia.jpg' },
+        { id: 2, diffs: [{x: 25.4, y: 15.5}, {x: 50.8, y: 25.8}, {x: 89.2, y: 23.5}, {x: 28.5, y: 60.2}], imgA: 'img1.jpg', imgB: 'img1 copia.jpg' },
+        { id: 4, diffs: [{x: 12.8, y: 41.5}, {x: 21.8, y: 35.5}, {x: 36.5, y: 44.5}, {x: 95.8, y: 35.8}], imgA: 'img3.jpg', imgB: 'img3 copia.jpg' },
+        { id: 5, diffs: [{x: 17.5, y: 96.5}, {x: 59.5, y: 45.0}, {x: 81.5, y: 22.0}, {x: 91.5, y: 97.0}], imgA: 'img5.jpg', imgB: 'img5 copia.jpg' }
+
+
+    ];
+
+    let currentLevel = 0;
+    let lives = 3;
+    let totalSeconds = 0;
+    let foundInLevel = 0;
+    let gameActive = false;
+    let timerInterval;
+
+    function initGame() {
+        document.getElementById('start-screen').classList.add('hidden');
+        gameActive = true;
+        timerInterval = setInterval(() => {
+            totalSeconds++;
+            document.getElementById('timer-display').innerText = `🕒 ${totalSeconds}s`;
+        }, 1000);
+        loadLevel();
+    }
+
+    function loadLevel() {
+        const data = levels[currentLevel];
+        document.getElementById('img1').src = data.imgA;
+        document.getElementById('img2').src = data.imgB;
+        document.getElementById('lvl-txt').innerText = currentLevel + 1;
+        foundInLevel = 0;
+        data.diffs.forEach(d => d.found = false);
+        document.querySelectorAll('.marker').forEach(m => m.remove());
+    }
+
+    function handleTap(e) {
+        if (!gameActive) return;
+
+        // El rect es ahora el tamaño REAL que ocupa la imagen en pantalla
+        const rect = e.currentTarget.getBoundingClientRect();
+        const px = ((e.clientX - rect.left) / rect.width) * 100;
+        const py = ((e.clientY - rect.top) / rect.height) * 100;
+
+        let hit = false;
+        const levelData = levels[currentLevel];
+
+        levelData.diffs.forEach(diff => {
+            const dist = Math.sqrt(Math.pow(px - diff.x, 2) + Math.pow(py - diff.y, 2));
+            if (dist < 6 && !diff.found) {
+                diff.found = true;
+                hit = true;
+                success(diff.x, diff.y);
+            }
+        });
+
+        if (!hit) fail(px, py);
+    }
+
+    function success(x, y) {
+        addMarker(x, y, 'correct');
+        foundInLevel++;
+        if (foundInLevel === levels[currentLevel].diffs.length) {
+            currentLevel++;
+            setTimeout(() => {
+                if (currentLevel < levels.length) loadLevel();
+                else finishGame();
+            }, 800);
+        }
+    }
+
+    function fail(x, y) {
+        lives--;
+        totalSeconds += 10;
+        updateHearts();
+        addMarker(x, y, 'wrong');
+        if (lives <= 0) {
+            gameActive = false;
+            clearInterval(timerInterval);
+            document.getElementById('over-screen').classList.remove('hidden');
+        }
+    }
+
+    function updateHearts() {
+        document.getElementById('lives-display').innerText = "❤️".repeat(lives) + "💔".repeat(3 - lives);
+    }
+
+    function addMarker(x, y, type) {
+        // Añadimos el marcador a ambos wrappers (capas de imagen)
+        const wrappers = [document.getElementById('wrapper1'), document.getElementById('wrapper2')];
+        wrappers.forEach(wrap => {
+            const m = document.createElement('div');
+            m.className = `marker ${type}`;
+            m.style.left = x + '%';
+            m.style.top = y + '%';
+            if (type === 'wrong') m.innerHTML = '✖';
+            wrap.appendChild(m);
+            if (type === 'wrong') setTimeout(() => m.remove(), 800);
+        });
+    }
+
+    function finishGame() {
+        gameActive = false;
+        clearInterval(timerInterval);
+        document.getElementById('win-screen').classList.remove('hidden');
+        document.getElementById('result-text').innerText = `Tiempo final: ${totalSeconds}s`;
+    }
+</script>
+</body>
+</html>
